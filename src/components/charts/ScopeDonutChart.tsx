@@ -4,10 +4,11 @@ import { useState } from "react";
 import { PieChart, Pie, Cell, Sector, ResponsiveContainer } from "recharts";
 import type { ScopeBreakdown } from "@/lib/types";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
-
+import Tooltip from "@/components/ui/Tooltip";
 interface ScopeDonutChartProps {
   breakdown: ScopeBreakdown;
   loading?: boolean;
+
 }
 
 const SLICES = [
@@ -19,7 +20,9 @@ const SLICES = [
 type TooltipState = { name: string; value: number; color: string; x: number; y: number } | null;
 
 export default function ScopeDonutChart({ breakdown, loading }: ScopeDonutChartProps) {
+  const [tooltip, setTooltip] = useState<TooltipState>(null);
   if (loading) return <LoadingSkeleton variant="chart" />;
+
 
   const data = SLICES.filter((s) => breakdown[s.key] > 0).map((s) => ({
     name: s.label,
@@ -33,10 +36,11 @@ export default function ScopeDonutChart({ breakdown, loading }: ScopeDonutChartP
     <div className="rounded-xl bg-slate-900 p-5 ring-1 ring-slate-800">
       <div className="mb-1 flex items-center gap-1.5">
         <p className="text-sm font-medium text-slate-300">Scope 비율</p>
+        <Tooltip content="Scope 1은 직접 연소(가스·경유), Scope 2는 구매 전력, Scope 3은 공급망·물류 등 간접 배출입니다. GHG Protocol 기준입니다." />
       </div>
       <p className="mb-4 text-xs text-slate-500">각 영역에 마우스를 올리면 배출량을 확인할 수 있어요.</p>
 
-      <div className="relative">
+      <div className="relative" onMouseLeave={() => setTooltip(null)}>
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
             <Pie
@@ -49,7 +53,15 @@ export default function ScopeDonutChart({ breakdown, loading }: ScopeDonutChartP
               onMouseMove={(entry, _index, e: React.MouseEvent) => {
                 const rect = (e.currentTarget as Element).closest("svg")?.getBoundingClientRect();
                 if (!rect) return;
+                setTooltip({
+                  name: entry.name as string,
+                  value: entry.value as number,
+                  color: (entry as { color?: string }).color ?? "#fff",
+                  x: e.clientX - rect.left,
+                  y: e.clientY - rect.top,
+                });
               }}
+              onMouseLeave={() => setTooltip(null)}
             >
               {data.map((d, i) => <Cell key={i} fill={d.color} />)}
             </Pie>
@@ -63,6 +75,19 @@ export default function ScopeDonutChart({ breakdown, loading }: ScopeDonutChartP
           <span className="text-xs text-slate-400">tCO₂e</span>
         </div>
 
+        {/* 커스텀 툴팁 */}
+        {tooltip && (
+          <div
+            className="pointer-events-none absolute rounded-lg bg-slate-800 px-3 py-2 text-xs shadow-xl ring-1 ring-slate-700"
+            style={{ left: tooltip.x + 12, top: tooltip.y + 12, zIndex: 9999 }}
+          >
+            <p className="mb-1 font-semibold text-slate-200">{tooltip.name}</p>
+            <p className="font-bold" style={{ color: tooltip.color }}>
+              {(tooltip.value / 1000).toFixed(1)} tCO₂e
+            </p>
+            <p className="text-slate-400">{((tooltip.value / total) * 100).toFixed(1)}%</p>
+          </div>
+        )}
       </div>
 
       {/* 범례 */}
