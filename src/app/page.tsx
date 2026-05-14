@@ -5,10 +5,12 @@ import KpiCard from "@/components/ui/KpiCard";
 import { useState, useMemo ,useEffect} from "react";
 import { filterRecords, buildKpis, aggregateByMonth, aggregateByScope, aggregateByStage, formatCo2e } from "@/lib/calculations";
 import type { Company, EmissionRecord, FilterState, Post } from "@/lib/types";
-import { fetchEmissionRecords, fetchCompanies, fetchPosts } from "@/lib/api";
+import { fetchEmissionRecords, fetchCompanies, fetchPosts ,createOrUpdatePost} from "@/lib/api";
 import EmissionTrendChart from "@/components/charts/EmissionTrendChart";
 import ScopeDonutChart from "@/components/charts/ScopeDonutChart";
 import LifecycleBarChart from "@/components/charts/LifecycleBarChart";
+import EmissionTable from "@/components/dashboard/EmissionTable";
+import NotesPanel from "@/components/dashboard/NotesPanel";
 import { SCOPE_LABEL, STAGE_SHORT } from "@/lib/data";
 export default function Dashboard() {
   // state 선언
@@ -40,6 +42,19 @@ export default function Dashboard() {
       setLoading(false);
     }
   }
+    // 포스트 수정 추가용으로 하나 추가
+    async function handleSave(post: Omit<Post, "id"> & { id?: string }) {
+    const oid = post.id ?? `opt-${Date.now()}`;
+    const opt: Post = { ...post, id: oid };
+    setPosts((prev) => post.id ? prev.map((p) => p.id === post.id ? opt : p) : [opt, ...prev]);
+    try {
+      const saved = await createOrUpdatePost(post);
+      setPosts((prev) => prev.map((p) => p.id === oid ? saved : p));
+    } catch (err) {
+      setPosts((prev) => prev.filter((p) => p.id !== oid));
+      throw err;
+    }
+  }
 
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises, react-hooks/set-state-in-effect
@@ -69,6 +84,10 @@ export default function Dashboard() {
       </div>
 
       <LifecycleBarChart data={stageBd} loading={loading} />
+
+      <EmissionTable records={filtered} loading={loading} />
+
+      <NotesPanel posts={posts} companies={companies} onSave={handleSave} />
     </div>
   );
 }
