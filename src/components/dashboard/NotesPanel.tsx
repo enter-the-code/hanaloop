@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import type { Post, Company } from "@/lib/types";
 import Toast from "@/components/ui/Toast";
+import Tooltip from "@/components/ui/Tooltip";
 
 interface NotesPanelProps {
   posts: Post[];
@@ -17,12 +18,12 @@ const inputCls = "w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-20
 
 export default function NotesPanel({ posts, companies, onSave }: NotesPanelProps) {
   const [form, setForm] = useState({ ...EMPTY, companyId: companies[0]?.id ?? "" });
-  const [saving, setSaving]   = useState(false);
-  const [toast, setToast]     = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const prevForm = useRef(form);
 
-  const recent       = [...posts].sort((a, b) => b.dateTime.localeCompare(a.dateTime)).slice(0, 3);
-  const companyName  = (id: string) => companies.find((c) => c.id === id)?.name ?? id;
+  const recent = [...posts].sort((a, b) => b.dateTime.localeCompare(a.dateTime)).slice(0, 3);
+  const companyName = (id: string) => companies.find((c) => c.id === id)?.name ?? id;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,6 +46,7 @@ export default function NotesPanel({ posts, companies, onSave }: NotesPanelProps
     <div className="rounded-xl bg-slate-900 p-5 ring-1 ring-slate-800">
       <div className="mb-1 flex items-center gap-1.5">
         <p className="text-sm font-medium text-slate-300">탄소 메모</p>
+        <Tooltip content="기업별 탄소 감축 활동, 목표, 이슈를 자유롭게 기록합니다. 저장 실패 시 자동으로 롤백됩니다." />
       </div>
       <p className="mb-4 text-xs text-slate-500">기업의 탄소 감축 활동, 목표, 보고 내용을 자유롭게 기록하세요.</p>
 

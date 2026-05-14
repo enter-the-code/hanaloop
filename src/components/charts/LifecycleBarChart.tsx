@@ -6,9 +6,9 @@ import {
 } from "recharts";
 import type { StageBreakdown } from "@/lib/types";
 import { formatCo2e } from "@/lib/calculations";
-import {LIFECYCLE_STAGE_LABEL} from "@/lib/data";
+import { LIFECYCLE_STAGE_LABEL } from "@/lib/data";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
-
+import Tooltip from "@/components/ui/Tooltip";
 interface LifecycleBarChartProps {
   data: StageBreakdown[];
   loading?: boolean;
@@ -16,10 +16,10 @@ interface LifecycleBarChartProps {
 
 // 1세대 스타일: 인디고-보라 계열
 const STAGE_COLORS: Record<string, string> = {
-  raw_material:  "#6366f1",
+  raw_material: "#6366f1",
   manufacturing: "#8b5cf6",
-  packaging:     "#a78bfa",
-  transport:     "#c4b5fd",
+  packaging: "#a78bfa",
+  transport: "#c4b5fd",
 };
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: { payload: StageBreakdown & { label: string } }[] }) {
@@ -49,6 +49,7 @@ export default function LifecycleBarChart({ data, loading }: LifecycleBarChartPr
     <div className="rounded-xl bg-slate-900 p-5 ring-1 ring-slate-800">
       <div className="mb-1 flex items-center gap-1.5">
         <p className="text-sm font-medium text-slate-300">전과정(LCA) 단계별 배출량</p>
+        <Tooltip content="원료 취득부터 운송까지 각 단계에서 얼마나 탄소가 나오는지 보여줍니다. ISO 14067 국제 표준 기준입니다." />
       </div>
       <p className="mb-4 text-xs text-slate-500">오른쪽 숫자는 전체 배출량 대비 비율(%)입니다.</p>
       <ResponsiveContainer width="100%" height={220}>
