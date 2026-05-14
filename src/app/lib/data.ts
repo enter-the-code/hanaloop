@@ -1,4 +1,36 @@
-import type { Country, Company, EmissionRecord, Post } from "./types";
+import type { Country, Company, EmissionRecord, Post, ScopeType,LifecycleStage } from "./types";
+
+export const LIFECYCLE_STAGE_LABEL: Record<LifecycleStage, string> = {
+  raw_material:  "원료 취득 (A1)",
+  manufacturing: "제조 (A2-A3)",
+  packaging:     "포장 (A4)",
+  transport:     "운송 (A5)",
+};
+
+
+// IPCC AR6 WGI (2021) 및 DEFRA 2023 근사값
+export const EMISSION_FACTOR_META: Record<
+  string,
+  {
+    scope: ScopeType;
+    stage: LifecycleStage;
+    factor: number;
+    unit: string;
+    label: string;
+  }
+> = {
+  natural_gas:        { scope: 1, stage: "manufacturing", factor: 2.04,  unit: "kg CO2e/m³",  label: "천연가스" },
+  diesel:             { scope: 1, stage: "transport",     factor: 2.68,  unit: "kg CO2e/L",   label: "디젤" },
+  gasoline:           { scope: 1, stage: "transport",     factor: 2.31,  unit: "kg CO2e/L",   label: "휘발유" },
+  lpg:                { scope: 1, stage: "manufacturing", factor: 1.51,  unit: "kg CO2e/L",   label: "LPG" },
+  electricity:        { scope: 2, stage: "manufacturing", factor: 0.46,  unit: "kg CO2e/kWh", label: "전력" },
+  coal:               { scope: 3, stage: "raw_material",  factor: 2.42,  unit: "kg CO2e/kg",  label: "석탄" },
+  chemical_feedstock: { scope: 3, stage: "raw_material",  factor: 1.80,  unit: "kg CO2e/kg",  label: "화학원료" },
+  rare_earth:         { scope: 3, stage: "raw_material",  factor: 3.50,  unit: "kg CO2e/kg",  label: "희토류" },
+  packaging_material: { scope: 3, stage: "packaging",     factor: 0.94,  unit: "kg CO2e/kg",  label: "포장재" },
+  logistics:          { scope: 3, stage: "transport",     factor: 0.15,  unit: "kg CO2e/tkm", label: "물류" },
+};
+
 
 export const countries: Country[] = [
   { code: "US", name: "United States", region: "North America" },
