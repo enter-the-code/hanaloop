@@ -1,16 +1,50 @@
 "use client";
 import Image from "next/image";
 import Filter from "@/components/framepiece/Filter";
-import { useState } from "react";
+import KpiCard from "@/components/ui/KpiCard";
+import { useState, useMemo ,useEffect} from "react";
+import { filterRecords, buildKpis, aggregateByMonth, aggregateByScope, aggregateByStage, formatCo2e } from "@/lib/calculations";
 import type { Company, EmissionRecord, FilterState, Post } from "@/lib/types";
+import { fetchEmissionRecords, fetchCompanies, fetchPosts } from "@/lib/api";
+import EmissionTrendChart from "@/components/charts/EmissionTrendChart";
+import ScopeDonutChart from "@/components/charts/ScopeDonutChart";
+import LifecycleBarChart from "@/components/charts/LifecycleBarChart";
+import { SCOPE_LABEL, STAGE_SHORT } from "@/lib/data";
 export default function Dashboard() {
-
-  const [records,   setRecords]   = useState<EmissionRecord[]>([]);
+  // state 선언
+  const [records, setRecords] = useState<EmissionRecord[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [posts,     setPosts]     = useState<Post[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState<string | null>(null);
-  const [filters,   setFilters]   = useState<FilterState>({ period: null, companyId: null, scope: null });
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<FilterState>({ period: null, companyId: null, scope: null });
+
+  // 필터 및 집계값 및 kpi 계산 - useMemo로 최적화
+  const filtered = useMemo(() => filterRecords(records, filters), [records, filters]);
+  const kpis = useMemo(() => buildKpis(filtered), [filtered]);
+  const monthly = useMemo(() => aggregateByMonth(filtered), [filtered]);
+  const scopeBd = useMemo(() => aggregateByScope(filtered), [filtered]);
+  const stageBd = useMemo(() => aggregateByStage(filtered), [filtered]);
+  const topScopeKg = scopeBd[`scope${kpis.topScope}` as keyof typeof scopeBd];
+  const topStagePct = stageBd.find((s) => s.stage === kpis.topStage)?.percentage.toFixed(1) ?? "0";
+
+  // 데어터 로드
+  async function loadData() {
+    setLoading(true); setError(null);
+    try {
+      const [r, c, p] = await Promise.all([fetchEmissionRecords(), fetchCompanies(), fetchPosts()]);
+      setRecords(r); setCompanies(c); setPosts(p);
+    } catch {
+      setError("데이터를 불러오지 못했습니다. 다시 시도해 주세요.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises, react-hooks/set-state-in-effect
+    loadData();
+  }, []);
 
   return (
     <div className="space-y-6 pt-12 md:pt-0">
@@ -23,29 +57,18 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-xl bg-slate-900 p-5 ring-1 ring-slate-800">
-        </div>
-        <div className="rounded-xl bg-slate-900 p-5 ring-1 ring-slate-800">
-        </div>
-        <div className="rounded-xl bg-slate-900 p-5 ring-1 ring-slate-800">
-        </div>
-        <div className="rounded-xl bg-slate-900 p-5 ring-1 ring-slate-800">
-        </div>
+        <KpiCard title="총 배출량" value={kpis.totalEmissions.toFixed(1)} unit="tCO₂e" tooltip="필터 조건 내 모든 배출원의 합산 배출량입니다. kg CO₂e → tCO₂e 변환값." loading={loading} />
+        <KpiCard title="제품별 평균 PCF" value={kpis.pcfPerProduct.toFixed(1)} unit="tCO₂e" description="제품군 평균" tooltip="PCF(Product Carbon Footprint): 제품 1단위 생산에 발생하는 탄소량. 제품군별 총량의 평균입니다." loading={loading} />
+        <KpiCard title="최대 배출 Scope" value={SCOPE_LABEL[kpis.topScope] ?? "-"} description={formatCo2e(topScopeKg)} tooltip="Scope 1·2·3 중 현재 필터 기간에서 가장 많은 배출량을 차지한 Scope입니다." loading={loading} />
+        <KpiCard title="최대 배출 단계" value={STAGE_SHORT[kpis.topStage] ?? kpis.topStage} description={`${topStagePct}%`} tooltip="원료 취득·제조·포장·운송 중 배출량 비중이 가장 높은 라이프사이클 단계입니다." loading={loading} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          <div className="rounded-xl bg-slate-900 p-5 ring-1 ring-slate-800">
-          </div>
-        </div>
-        <div className="lg:col-span-2">
-          <div className="rounded-xl bg-slate-900 p-5 ring-1 ring-slate-800">
-          </div>
-        </div>
+        <div className="lg:col-span-3"><EmissionTrendChart data={monthly} loading={loading} /></div>
+        <div className="lg:col-span-2"><ScopeDonutChart breakdown={scopeBd} loading={loading} /></div>
       </div>
 
-      <div className="rounded-xl bg-slate-900 p-5 ring-1 ring-slate-800">
-      </div>
+      <LifecycleBarChart data={stageBd} loading={loading} />
     </div>
   );
 }

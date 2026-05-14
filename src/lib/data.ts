@@ -1,5 +1,10 @@
 import type { Country, Company, EmissionRecord, Post, ScopeType,LifecycleStage } from "./types";
 
+export const SCOPE_LABEL: Record<number, string> = { 1: "Scope 1", 2: "Scope 2", 3: "Scope 3" };
+export const STAGE_SHORT: Record<string, string> = {
+  raw_material: "원료 취득", manufacturing: "제조", packaging: "포장", transport: "운송",
+};
+
 export const LIFECYCLE_STAGE_LABEL: Record<LifecycleStage, string> = {
   raw_material:  "원료 취득 (A1)",
   manufacturing: "제조 (A2-A3)",
