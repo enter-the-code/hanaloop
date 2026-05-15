@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import type { EmissionRecord } from "@/lib/types";
 import { formatCo2e } from "@/lib/calculations";
 import { LIFECYCLE_STAGE_LABEL } from "@/lib/data";
@@ -10,8 +10,27 @@ import Badge from "@/components/ui/Badge";
 import Tooltip from "@/components/ui/Tooltip";
 const PAGE_SIZE = 10;
 
-export default function EmissionTable({ records, loading }: { records: EmissionRecord[]; loading?: boolean }) {
+export default function EmissionTable({
+  records,
+  loading,
+  onDelete,
+}: {
+  records: EmissionRecord[];
+  loading?: boolean;
+  onDelete?: (id: string) => Promise<void>;
+}) {
   const [page, setPage] = useState(1);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDelete(id: string) {
+    if (!onDelete) return;
+    setDeletingId(id);
+    try {
+      await onDelete(id);
+    } finally {
+      setDeletingId(null);
+    }
+  }
   const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const paged = records.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
@@ -33,7 +52,7 @@ export default function EmissionTable({ records, loading }: { records: EmissionR
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-slate-800 bg-slate-950">
-              {["Month", "Product", "Scope", "Stage", "Source", "Activity", "EF", "Emissions", "Data"].map((h) => (
+              {["Month", "Product", "Scope", "Stage", "Source", "Activity", "EF", "Emissions", "Data", ""].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                   {h}
                 </th>
@@ -43,12 +62,12 @@ export default function EmissionTable({ records, loading }: { records: EmissionR
           <tbody className="divide-y divide-slate-800/60">
             {paged.length === 0 ? (
               <tr>
-                <td colSpan={9} className="py-12 text-center text-sm text-slate-500">
+                <td colSpan={10} className="py-12 text-center text-sm text-slate-500">
                   해당 조건의 데이터가 없습니다
                 </td>
               </tr>
             ) : paged.map((r) => (
-              <tr key={r.id} className="hover:bg-slate-800/40 transition-colors">
+              <tr key={r.id} className={`hover:bg-slate-800/40 transition-colors ${deletingId === r.id ? "opacity-40" : ""}`}>
                 <td className="px-4 py-3 text-slate-400 tabular-nums whitespace-nowrap">{r.yearMonth}</td>
                 <td className="px-4 py-3 font-medium text-slate-200 whitespace-nowrap">{r.productName}</td>
                 <td className="px-4 py-3 whitespace-nowrap"><Badge scope={r.scope} /></td>
@@ -76,6 +95,17 @@ export default function EmissionTable({ records, loading }: { records: EmissionR
                       {r.dataSourceType}
                     </span>
                   </Tooltip>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  {onDelete && (
+                    <button
+                      onClick={() => handleDelete(r.id)}
+                      disabled={deletingId === r.id}
+                      className="flex items-center justify-center rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
