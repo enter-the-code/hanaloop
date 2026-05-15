@@ -1,16 +1,17 @@
 "use client";
-import Image from "next/image";
 import Filter from "@/components/framepiece/Filter";
 import KpiCard from "@/components/ui/KpiCard";
 import { useState, useMemo ,useEffect} from "react";
 import { filterRecords, buildKpis, aggregateByMonth, aggregateByScope, aggregateByStage, formatCo2e } from "@/lib/calculations";
 import type { Company, EmissionRecord, FilterState, Post } from "@/lib/types";
-import { fetchEmissionRecords, fetchCompanies, fetchPosts ,createOrUpdatePost} from "@/lib/api";
+import { fetchEmissionRecords, fetchCompanies, fetchPosts, createOrUpdatePost, createEmissionRecord, deleteEmissionRecord } from "@/lib/api";
 import EmissionTrendChart from "@/components/charts/EmissionTrendChart";
 import ScopeDonutChart from "@/components/charts/ScopeDonutChart";
 import LifecycleBarChart from "@/components/charts/LifecycleBarChart";
 import EmissionTable from "@/components/dashboard/EmissionTable";
 import NotesPanel from "@/components/dashboard/NotesPanel";
+import ActivityInputForm from "@/components/dashboard/ActivityInputForm";
+import ImportPanel from "@/components/dashboard/ImportPanel";
 import { SCOPE_LABEL, STAGE_SHORT } from "@/lib/data";
 export default function Dashboard() {
   // state 선언
@@ -42,8 +43,30 @@ export default function Dashboard() {
       setLoading(false);
     }
   }
-    // 포스트 수정 추가용으로 하나 추가
-    async function handleSave(post: Omit<Post, "id"> & { id?: string }) {
+  async function handleDeleteRecord(id: string) {
+    setRecords((prev) => prev.filter((r) => r.id !== id));
+    try {
+      await deleteEmissionRecord(id);
+    } catch (err) {
+      await loadData();
+      throw err;
+    }
+  }
+
+  async function handleAddRecord(record: Omit<EmissionRecord, "id">) {
+    const opt: EmissionRecord = { ...record, id: `opt-${Date.now()}` };
+    setRecords((prev) => [...prev, opt]);
+    try {
+      const saved = await createEmissionRecord(record);
+      setRecords((prev) => prev.map((r) => r.id === opt.id ? saved : r));
+    } catch (err) {
+      setRecords((prev) => prev.filter((r) => r.id !== opt.id));
+      throw err;
+    }
+  }
+
+  // 포스트 수정 추가용으로 하나 추가
+  async function handleSave(post: Omit<Post, "id"> & { id?: string }) {
     const oid = post.id ?? `opt-${Date.now()}`;
     const opt: Post = { ...post, id: oid };
     setPosts((prev) => post.id ? prev.map((p) => p.id === post.id ? opt : p) : [opt, ...prev]);
@@ -66,7 +89,7 @@ export default function Dashboard() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-100">탄소 배출 대시보드</h1>
-          <p className="mt-1 text-sm text-slate-400">2024년 1–6월 · 4개 기업 · GHG Protocol 기준</p>
+          <p className="mt-1 text-sm text-slate-400">2025년 1–8월 · CT-045 · GHG Protocol 기준</p>
         </div>
         <Filter companies={companies} filters={filters} onChange={setFilters} />
       </div>
@@ -85,7 +108,11 @@ export default function Dashboard() {
 
       <LifecycleBarChart data={stageBd} loading={loading} />
 
-      <EmissionTable records={filtered} loading={loading} />
+      <ActivityInputForm onSave={handleAddRecord} />
+
+      <ImportPanel onImported={loadData} />
+
+      <EmissionTable records={filtered} loading={loading} onDelete={handleDeleteRecord} />
 
       <NotesPanel posts={posts} companies={companies} onSave={handleSave} />
     </div>
