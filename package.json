@@ -9,11 +9,17 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@types/pg": "^8.20.0",
+    "@types/swagger-ui-react": "^5.18.0",
     "lucide-react": "^1.14.0",
     "next": "16.2.6",
+    "next-swagger-doc": "^0.4.1",
+    "pg": "^8.20.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "recharts": "^3.8.1"
+    "recharts": "^3.8.1",
+    "swagger-ui-react": "^5.32.6",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
