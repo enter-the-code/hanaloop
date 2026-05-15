@@ -2,6 +2,10 @@ import type { Post, EmissionRecord, Company } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+const jitter = () => 200 + Math.random() * 600;
+const maybeFail = () => Math.random() < 0.15;
+
 async function http<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, init);
   if (!res.ok) {
@@ -9,6 +13,12 @@ async function http<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
   }
   return res.json() as Promise<T>;
+}
+
+async function httpWrite<T>(url: string, init?: RequestInit): Promise<T> {
+  await delay(jitter());
+  if (maybeFail()) throw new Error("Save failed");
+  return http<T>(url, init);
 }
 
 export async function fetchCompanies(): Promise<Company[]> {
@@ -22,7 +32,7 @@ export async function fetchPosts(): Promise<Post[]> {
 export async function createOrUpdatePost(
   p: Omit<Post, "id"> & { id?: string }
 ): Promise<Post> {
-  return http<Post>("/api/posts", {
+  return httpWrite<Post>("/api/posts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(p),
@@ -36,7 +46,7 @@ export async function fetchEmissionRecords(): Promise<EmissionRecord[]> {
 export async function createEmissionRecord(
   r: Omit<EmissionRecord, "id">
 ): Promise<EmissionRecord> {
-  return http<EmissionRecord>("/api/records", {
+  return httpWrite<EmissionRecord>("/api/records", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(r),
@@ -44,7 +54,7 @@ export async function createEmissionRecord(
 }
 
 export async function deleteEmissionRecord(id: string): Promise<void> {
-  return http<void>(`/api/records?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+  return httpWrite<void>(`/api/records?id=${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 export async function importFile(file: File): Promise<{ inserted: number; errors: string[] }> {

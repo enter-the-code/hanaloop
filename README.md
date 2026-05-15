@@ -6,13 +6,32 @@
 
 ## 실행 방법
 
+### Docker (권장 — 3단계)
+
 ```bash
-npm install
-npm run dev
-# http://localhost:3000
+git clone <이 저장소 URL>
+cp .env.example .env.local
+docker compose up --build
 ```
 
-Node.js 18 이상 필요. 외부 DB나 API Key 없이 바로 실행됩니다.
+→ http://localhost:3000 (대시보드)  
+→ http://localhost:3000/api-docs (Swagger UI)
+
+PostgreSQL 초기화(시드 포함)와 Next.js 앱이 한 번에 실행됩니다.
+
+### 로컬 개발 (5단계)
+
+> Node.js 18 이상, PostgreSQL 16 필요
+
+```bash
+git clone <이 저장소 URL>          # 1. 클론
+cp .env.example .env.local        # 2. 환경변수 설정
+psql -f docker/init.sql           # 3. DB 초기화 (테이블 + 시드)
+yarn install                      # 4. 패키지 설치 (npm install 도 동일)
+yarn start                        # 5. 프로덕션 서버 실행
+```
+
+개발 서버로 실행하려면 5번을 `yarn dev`로 대체하세요.
 
 ---
 
@@ -46,7 +65,7 @@ Vercel 무료 플랜, Railway, Render 등 대안도 검토했으나 과제 제�
 
 ### 필터 바
 
-기간(2024-01 ~ 2024-06) · 회사 · Scope를 조합 필터링하면 KPI·차트·테이블이 모두 실시간 갱신됩니다.
+기간(2025-01 ~ 2025-08) · 회사 · Scope를 조합 필터링하면 KPI·차트·테이블이 모두 실시간 갱신됩니다.
 
 ---
 
@@ -60,40 +79,55 @@ Vercel 무료 플랜, Railway, Render 등 대안도 검토했으나 과제 제�
 | Charts | Recharts 3 |
 | Icons | Lucide React |
 | Font | Inter (Google Fonts) |
-| DB | 없음 (인메모리 Fake API) |
+| DB | PostgreSQL 16 (pg 드라이버 + Pool) |
+| Container | Docker + docker-compose |
 
 ---
 
 ## 프로젝트 구조
 
 ```
-src/
-├── app/
-│   ├── layout.tsx          # 전체 레이아웃 (NavBar + main)
-│   ├── page.tsx            # 메인 대시보드 (데이터 로드·집계·렌더링)
-│   └── notes/page.tsx      # Notes 더미 페이지
-├── components/
-│   ├── charts/
-│   │   ├── EmissionTrendChart.tsx   # Scope별 월간 라인 차트
-│   │   ├── ScopeDonutChart.tsx      # Scope 비율 도넛 차트
-│   │   └── LifecycleBarChart.tsx    # LCA 단계별 수평 막대 차트
-│   ├── dashboard/
-│   │   ├── EmissionTable.tsx        # 배출 기록 테이블 (페이지네이션)
-│   │   └── NotesPanel.tsx           # 탄소 메모 CRUD
-│   ├── framepiece/
-│   │   ├── NavBar.tsx               # 사이드바 내비게이션 (모바일 대응)
-│   │   └── Filter.tsx               # 기간·회사·Scope 필터 바
-│   └── ui/
-│       ├── KpiCard.tsx              # KPI 수치 카드
-│       ├── Badge.tsx                # Scope 배지 (색상 코딩)
-│       ├── Tooltip.tsx              # Portal 기반 호버 툴팁
-│       ├── Toast.tsx                # 저장 성공·실패 알림
-│       └── LoadingSkeleton.tsx      # 카드·차트·테이블 스켈레톤
-└── lib/
-    ├── types.ts            # 전체 타입 정의
-    ├── data.ts             # 시드 데이터 + 배출계수 메타
-    ├── api.ts              # Fake API (지연 200~800ms + 15% 실패율)
-    └── calculations.ts     # 집계·필터·KPI 계산 순수 함수
+hanaloop/
+├── docker/
+│   └── init.sql            # PostgreSQL 테이블 DDL + 시드 데이터
+├── Dockerfile              # Next.js standalone 빌드 이미지
+├── docker-compose.yml      # app(Next.js) + db(PostgreSQL) 구성
+├── .env.example            # 환경 변수 템플릿
+└── src/
+    ├── app/
+    │   ├── layout.tsx          # 전체 레이아웃 (NavBar + main)
+    │   ├── page.tsx            # 메인 대시보드 (데이터 로드·집계·렌더링)
+    │   ├── notes/page.tsx      # Notes 더미 페이지
+    │   └── api/
+    │       ├── companies/route.ts   # GET  /api/companies
+    │       ├── records/route.ts     # GET  /api/records  POST /api/records
+    │       ├── posts/route.ts       # GET  /api/posts    POST /api/posts
+    │       └── import/route.ts      # POST /api/import (CSV/TSV 파일 업로드)
+    ├── components/
+    │   ├── charts/
+    │   │   ├── EmissionTrendChart.tsx   # Scope별 월간 라인 차트
+    │   │   ├── ScopeDonutChart.tsx      # Scope 비율 도넛 차트
+    │   │   └── LifecycleBarChart.tsx    # LCA 단계별 수평 막대 차트
+    │   ├── dashboard/
+    │   │   ├── EmissionTable.tsx        # 배출 기록 테이블 (페이지네이션)
+    │   │   ├── NotesPanel.tsx           # 탄소 메모 CRUD
+    │   │   ├── ActivityInputForm.tsx    # 배출 데이터 직접 입력 폼 (유효성 검사)
+    │   │   └── ImportPanel.tsx          # CSV/TSV 드래그·클릭 업로드 UI
+    │   ├── framepiece/
+    │   │   ├── NavBar.tsx               # 사이드바 내비게이션 (모바일 대응)
+    │   │   └── Filter.tsx               # 기간·회사·Scope 필터 바
+    │   └── ui/
+    │       ├── KpiCard.tsx              # KPI 수치 카드
+    │       ├── Badge.tsx                # Scope 배지 (색상 코딩)
+    │       ├── Tooltip.tsx              # Portal 기반 호버 툴팁
+    │       ├── Toast.tsx                # 저장 성공·실패 알림
+    │       └── LoadingSkeleton.tsx      # 카드·차트·테이블 스켈레톤
+    └── lib/
+        ├── types.ts            # 전체 타입 정의
+        ├── data.ts             # 배출계수 메타 (로컬 참조용)
+        ├── db.ts               # PostgreSQL Pool (pg 드라이버)
+        ├── api.ts              # HTTP fetch 클라이언트 함수
+        └── calculations.ts     # 집계·필터·KPI 계산 순수 함수
 ```
 
 ---
@@ -136,22 +170,145 @@ src/
 
 ---
 
-## 시드 데이터 (4개 기업 · 6개월 · 72개 레코드)
+## 시드 데이터 (CT-045 · 2025년 1–8월 · 29개 레코드)
 
-| 기업 | 국가 | 대표 제품 | 주요 배출원 |
-|------|------|-----------|-------------|
-| Atlas Steel Corp | 미국 | Steel Beam | Scope 1 천연가스, Scope 3 석탄 |
-| Rhine Chemicals GmbH | 독일 | Ethylene | Scope 1 LPG, Scope 3 화학원료 |
-| 한강 로지스틱스 | 한국 | Freight Service | Scope 1 디젤·휘발유, Scope 3 포장재 |
-| Sakura Electronics | 일본 | Circuit Board | Scope 2 전력, Scope 3 희토류·물류 |
+과제에서 제공된 원본 데이터를 그대로 사용합니다.
+
+| 회사 | 국가 | 제품 |
+|------|------|------|
+| CT-045 | 한국 | CT-045 제품 |
+
+| 활동 유형 | 설명 | Scope | LCA 단계 | 배출계수 | 단위 |
+|-----------|------|-------|----------|----------|------|
+| 전기 | 한국전력 | 2 | manufacturing | 0.456 | kgCO₂e/kWh |
+| 원소재 | 플라스틱 1 | 3 | raw_material | 2.3 | kgCO₂e/kg |
+| 원소재 | 플라스틱 2 | 3 | raw_material | 3.2 | kgCO₂e/kg |
+| 운송 | 트럭 | 3 | transport | 3.5 | kgCO₂e/ton·km |
+
+---
+
+## ERD / DB 스키마 *(Claude Code 작성)*
+
+```
+┌─────────────────────────────────┐
+│ emission_factors                │
+│─────────────────────────────────│
+│ id            SERIAL  PK        │
+│ source        TEXT    NOT NULL  │  예: electricity, plastic_1
+│ scope         INT     NOT NULL  │  1 / 2 / 3
+│ stage         TEXT    NOT NULL  │  raw_material / manufacturing / transport
+│ factor        NUMERIC NOT NULL  │  kgCO₂e 단위 계수
+│ unit          TEXT    NOT NULL  │  kgCO₂e/kWh 등
+│ version       TEXT    NOT NULL  │  예: 2025-KR
+│ valid_from    DATE               │
+│ valid_to      DATE               │
+└─────────────────────────────────┘
+
+┌─────────────────────────────────┐
+│ companies                       │
+│─────────────────────────────────│
+│ id            TEXT    PK        │  예: ct045
+│ name          TEXT    NOT NULL  │
+│ country       TEXT    NOT NULL  │
+└─────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│ emission_records                                │
+│─────────────────────────────────────────────────│
+│ id                  TEXT(UUID) PK               │
+│ company_id          TEXT     FK → companies.id  │
+│ product_name        TEXT                        │
+│ year_month          TEXT     NOT NULL           │  예: 2025-03
+│ scope               INT      NOT NULL           │
+│ stage               TEXT     NOT NULL           │
+│ source              TEXT     NOT NULL           │  FK 참조 대신 비정규화
+│ activity_amount     NUMERIC  NOT NULL           │
+│ activity_unit       TEXT     NOT NULL           │
+│ emission_factor     NUMERIC  NOT NULL           │
+│ factor_unit         TEXT                        │
+│ emissions_kg_co2e   NUMERIC  NOT NULL           │
+│ data_source_type    TEXT     NOT NULL           │  primary / secondary
+│ created_at          TIMESTAMPTZ  DEFAULT now()  │
+└─────────────────────────────────────────────────┘
+
+┌────────────────────────────────┐
+│ posts                          │
+│────────────────────────────────│
+│ id            TEXT(UUID) PK    │
+│ company_id    TEXT    NOT NULL  │
+│ title         TEXT    NOT NULL  │
+│ content       TEXT    NOT NULL  │
+│ date_time     TEXT    NOT NULL  │
+└────────────────────────────────┘
+```
+
+**설계 선택:** `emission_records.source`를 `emission_factors.source`에 외래 키로 연결하지 않기로 설정했습니다. 배출계수가 바뀔수 있기 때문입니다.
+
+---
+
+## 트레이드오프 (Trade-off)
+
+### 1. 인메모리 Fake API → PostgreSQL 실제 DB
+
+| 항목 | Fake API (이전) | PostgreSQL (현재) |
+|------|-----------------|-------------------|
+| 실행 조건 | `npm install` 만으로 즉시 실행 | Docker 또는 로컬 PostgreSQL 필요 |
+| 신뢰도 | 15% 실패율·지연 시뮬레이션 | 실제 네트워크·트랜잭션 동작 |
+| 영속성 | 프로세스 종료 시 초기화 | 볼륨에 영구 저장 |
+| 채점 반영 | 인메모리 전용 | DB 연동 항목 충족 |
+
+**선택 이유:** 과제 체크리스트에 DB 연동이 명시되어 있고, 실제 CRUD가 영속되어야 CSV 임포트·직접 입력 기능의 의미가 생긴다. 실행 복잡도는 `docker compose up` 한 줄로 흡수했다.
+
+---
+
+### 2. emission_records.source 비정규화
+
+배출계수를 `emission_factors` 테이블에서 조인하지 않고 레코드에 함께 저장했습니다.
+
+**장점:** 배출계수가 미래에 바뀌어도 과거 레코드의 산정값이 변하지 않아 감사 추적(audit trail)이 유지됩니다.  
+**단점:** 배출계수 메타를 일괄 변경할 때 레코드를 재계산해야 합니다.  
+**결론:** 탄소 회계에서 과거 데이터 불변성이 규정 준수(GHG Protocol)의 핵심 요건이므로 비정규화를 선택했습니다.
+
+---
+
+### 3. Recharts vs. D3 직접 사용
+
+Recharts는 React 컴포넌트 형태로 선언적으로 차트를 구성할 수 있어 개발 속도가 빠릅니다. 대신 PieChart 내부 툴팁 좌표 계산 같은 저수준 제어가 필요한 경우 라이브러리 내부를 우회해야 했습니다(도넛 커스텀 툴팁). D3를 직접 쓰면 완전한 제어가 가능하지만 선언적 React 패러다임과 충돌하고 코드량이 3~4배 늘어납니다. 이 프로젝트 규모에서는 Recharts가 더 합리적인 선택이었습니다.
+
+---
+
+### 4. Next.js API Routes vs. 별도 Express 서버
+
+별도 백엔드 서버를 두지 않고 Next.js API Routes(`route.ts`)로 DB 접근 로직을 통합했습니다.
+
+**장점:** 단일 레포·단일 Docker 이미지(app)로 배포가 단순해지고, 프론트·백 타입을 공유할 수 있습니다.  
+**단점:** API가 복잡해질수록 Next.js 서버와 혼재해 분리가 어렵습니다.  
+**결론:** 과제 규모에서는 API Routes가 충분하며, 실제 서비스 확장 시 별도 서버로 분리하는 것이 바람직합니다.
+
+---
+
+## 유사 시스템과의 비교
+
+| 항목 | HanaLoop (이 프로젝트) | Salesforce Net Zero Cloud | Greenly |
+|------|----------------------|--------------------------|---------|
+| **목적** | PCF 전과정 배출 대시보드 (과제) | 전사 탄소 경영 플랫폼 | SME 대상 탄소 발자국 측정 SaaS |
+| **데이터 입력** | CSV/TSV 임포트 + 직접 입력 폼 | ERP·SCM 연동 커넥터 | 영수증·인보이스 AI 자동 파싱 |
+| **Scope 지원** | Scope 1·2·3 | Scope 1·2·3 + 금융 배출량 | Scope 1·2·3 |
+| **배출계수** | 고정값 (IPCC AR6 근사) | 국가·업종별 실시간 DB | 자체 검증 DB (업종·국가·공급업체) |
+| **LCA 단계** | A1(원료)·A2-A3(제조)·A5(운송) | 전과정 (A1–C4) | 제품 카테고리별 자동 분류 |
+| **리포팅** | 대시보드 KPI (tCO₂e) | GHG Protocol·TCFD·SEC 보고서 자동 생성 | GHG Protocol 기반 PDF 보고서 |
+| **감사 추적** | 레코드 비정규화로 과거값 보존 | 변경 이력 버전 관리 | 데이터 출처 URL 연결 |
+| **가격** | 오픈소스 (과제용) | 엔터프라이즈 라이선스 | 월 구독 (SME 플랜) |
+
+**HanaLoop의 차별점:** 과제 스펙에 충실하게 GHG Protocol Scope 분류·LCA 단계·PCF 산정식을 직접 구현하고, 데이터 입력 방식을 다양화(CSV 임포트·직접 입력)했습니다. 상용 솔루션 대비 배출계수 자동 갱신·ERP 연동·보고서 자동화 기능이 없지만, 핵심 측정·시각화 파이프라인을 처음부터 직접 구현했다는 점에서 학습 가치가 있습니다.
 
 ---
 
 ## 핵심 설계 결정
 
-### 1. Fake API 레이어 (`src/lib/api.ts`)
+### 1. PostgreSQL 기반 API 레이어 (`src/lib/api.ts` + `src/app/api/`)
 
-실제 네트워크를 흉내내기 위해 200~800ms 무작위 지연과 15% 확률 실패를 적용했습니다. `fetchEmissionRecords`, `fetchCompanies`, `fetchPosts`를 `Promise.all`로 병렬 호출해 초기 로드를 최소화합니다.
+클라이언트는 `src/lib/api.ts`의 HTTP fetch 함수를 호출하고, Next.js API Routes(`/api/companies`, `/api/records`, `/api/posts`, `/api/import`)가 PostgreSQL Pool로 쿼리합니다. `fetchEmissionRecords`, `fetchCompanies`, `fetchPosts`를 `Promise.all`로 병렬 호출해 초기 로드를 최소화합니다.
 
 ### 2. 낙관적 UI (NotesPanel) -> AI 추천
 
@@ -254,7 +411,7 @@ Recharts 기본 `<Tooltip>`을 `ScopeDonutChart`에 적용했을 때 위치가 �
 지금 니가 스스로 이 프로젝트를 시작해서 ui를 분석해 그리고 리드미를 나한테 만들어서 줘
 
 [커밋 히스토리 / GHG Protocol·LCA 도메인 정리 / 데이터 설계 프롬프트 /
- 스타일 요청 내용]
+ 스타일 요청 내용 / 채점 기준 전체 붙여넣기]
 
 이걸 토대로 리드미 적어줘봐
 ```
@@ -265,11 +422,37 @@ Recharts 기본 `<Tooltip>`을 `ScopeDonutChart`에 적용했을 때 위치가 �
 
 ---
 
+### 8. DB 환경 설정 (.env.example · init.sql) — Claude Code
+
+**프롬프트:** "PostgreSQL 연결을 위한 .env.example 파일 만들어줘. init.sql은 emission_factors, companies, emission_records, posts 테이블 DDL이랑 CT-045 시드 데이터까지 포함해줘."
+
+**결정 이유:** DB 연동 자체(pg Pool 설정, API route 작성, 쿼리 로직)는 직접 구현했다. `.env.example`의 변수 이름 규칙과 `init.sql`의 DDL·시드 INSERT 문은 반복적이고 오타가 나기 쉬운 작업이라 AI에게 맡겼다. 테이블 구조(비정규화 여부, UUID PK 선택, CHECK constraint 범위)는 내가 직접 설계해서 지시했고, 생성된 SQL은 실제 실행해 검증했다.
+
+---
+
+### 9. Docker healthcheck 설정 — Claude Code
+
+**프롬프트:** "PostgreSQL 컨테이너가 완전히 준비된 후에 Next.js 앱이 뜨도록 healthcheck 기반 depends_on 조건 넣어줘."
+
+**결정 이유:** Dockerfile과 docker-compose.yml 전체 구조는 내가 직접 작성했다. `pg_isready` 커맨드를 healthcheck에 사용하는 방법과 `depends_on: condition: service_healthy` 문법은 써본 적이 없어서 해당 부분만 Claude에게 물어보고 적용했다. interval·timeout·retries 값은 Claude 제안을 이해한 뒤 그대로 채택했다.
+
+---
+
+### 10. OpenAPI / Swagger UI — Claude Code
+
+**프롬프트:** "next-swagger-doc 또는 swagger-ui-react로 `/api-docs` 페이지 만들어줘. OpenAPI 3.0 스펙은 `/api/openapi` route에서 JSON으로 반환하고, Swagger UI는 클라이언트 컴포넌트로 분리해줘."
+
+**결정 이유:** API 명세를 텍스트로만 README에 적는 것보다 실제 동작하는 UI가 있어야 보너스 항목을 완전히 충족한다고 판단했다. `swagger-ui-react`가 SSR에서 동작하지 않아 `"use client"` 분리가 필요한 구조적 이유를 Claude가 설명해줬고, 각 엔드포인트의 request/response 스키마와 예시값은 내가 직접 검토해서 실제 API 동작과 일치하는지 확인했다.
+
+---
+
 ## 작업 소요 시간
 
-**총 작업 시간: 약 4시간 (15:54 ~ 20:00)**
+**총 작업 시간: 약 4시간 (15:54 ~ 20:00) + 다음날 DB·Docker·기능 보완**
 
-| 시간 | 커밋 | 소요 |
+### 5월 14일 — UI 구현
+
+| 시각 | 커밋 | 소요 |
 |------|------|------|
 | 15:54 | 프로젝트 초기화 (create-next-app) | — |
 | 17:26 | 타입 생성 + 과제 API + 시드 데이터 | 약 90분 |
@@ -279,8 +462,16 @@ Recharts 기본 `<Tooltip>`을 `ScopeDonutChart`에 적용했을 때 위치가 �
 | 18:32 | 아이콘 + 네비게이션·필터 바 고도화 | 약 18분 |
 | 19:06 | 차트 3종 + 스켈레톤 구현 | 약 34분 |
 | 19:14 | 레이아웃 완성 (테이블·NotesPanel·Toast) | 약 8분 |
-| 19:24 | 툴팁 전 컴포넌트 적용 — KPI만 고려해 변수 미리 추가했으나 결국 전부 적용 | 약 10분 |
+| 19:24 | 툴팁 전 컴포넌트 적용 | 약 10분 |
 | 20:00 | 도넛 차트 커스텀 툴팁 마무리 — 최종 마무리 커밋 | 약 36분 |
+
+### 5월 15일 — DB·Docker·기능 보완
+
+| 커밋 | 소요 |
+|------|------|
+| 데이터베이스 연동 (PostgreSQL + API Routes 전환, 과제 원본 데이터 적용) | 약 30분 |
+| 필터·테이블 수정 + Swagger UI 추가 | — |
+| 엑셀 드래그 앤 드롭 임포트 추가 | — |
 
 ---
 
@@ -288,7 +479,7 @@ Recharts 기본 `<Tooltip>`을 `ScopeDonutChart`에 적용했을 때 위치가 �
 
 **1. 도메인 학습 + 시드 데이터 설계 (약 90분)**
 
-가장 긴 구간. GHG Protocol·LCA·ISO 14067 개념을 처음부터 익히고, 4개 업종에 맞는 배출원·배출계수·활동량을 현실적으로 설계하는 데 시간이 걸렸다. AI로 72개 레코드를 생성한 뒤 배출계수 불일치를 직접 찾아 수동 정합하는 과정도 포함된다.
+가장 긴 구간. GHG Protocol·LCA·ISO 14067 개념을 처음부터 익히고, 배출원·배출계수·활동량을 현실적으로 설계하는 데 시간이 걸렸다. AI로 레코드를 생성한 뒤 배출계수 불일치를 직접 찾아 수동 정합하는 과정도 포함된다.
 
 **2. 도넛 차트 커스텀 툴팁 (약 36분)**
 
@@ -298,9 +489,15 @@ Recharts 기본 Tooltip이 PieChart 안에서 위치가 계속 깨지는 문제�
 
 라인·도넛·수평 막대 차트를 Recharts로 구현하면서 다크 테마에 맞는 그리드·축·범례 스타일을 직접 조정했다. 각 차트마다 커스텀 Tooltip 레이아웃도 별도로 작성했다.
 
+**4. 데이터베이스 설계 및 연동 (약 30분)**
+
+인메모리 Fake API에서 PostgreSQL 실제 DB로 전환하면서 테이블 구조(비정규화 여부, UUID PK, CHECK constraint) 설계와 API Routes 쿼리 로직을 직접 작성했다. `docker/init.sql` 시드 데이터와 `.env` 설정은 AI 보조로 작성하고 실제 실행해 검증했다.
+
 ---
 
 ## 커밋 히스토리 요약
+
+### 5월 14일
 
 | 시각 | 커밋 내용 |
 |------|-----------|
@@ -313,3 +510,11 @@ Recharts 기본 Tooltip이 PieChart 안에서 위치가 계속 깨지는 문제�
 | 19:14 | 레이아웃 완성 (테이블·NotesPanel·Toast) |
 | 19:24 | 툴팁 전 컴포넌트 적용 — KPI만 고려해 변수를 미리 추가했으나, 결국 전 컴포넌트에 적용 완료 |
 | 20:00 | 도넛 차트 커스텀 툴팁 마무리 — 최종 마무리 커밋 |
+
+### 5월 15일
+
+| 커밋 내용 |
+|-----------|
+| 데이터베이스 조회 방식으로 수정 및 제공 테스트 데이터를 사용하도록 수정 |
+| 필터와 테이블 수정 및 Swagger 추가 |
+| 엑셀 드래그 앤 드롭 추가 |
